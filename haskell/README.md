@@ -1,0 +1,3 @@
+# New install commands don't work correctly, so use the old ones...
+cabal v1-update
+cabal v1-install minisat-solver
