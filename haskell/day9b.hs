@@ -9,7 +9,7 @@ import qualified Data.Text.IO as TIO
 parseLine :: Int -> T.Text -> [((Int, Int), Int)]
 parseLine y line =
     zipWith
-        (\x c -> ((y, x), (C.digitToInt c)))
+        (\x c -> ((y, x), C.digitToInt c))
         [0..]
         (T.unpack line)
 
@@ -17,8 +17,7 @@ parse :: T.Text -> M.Map (Int, Int) Int
 parse content =
     M.fromList $
     concatMap (uncurry parseLine) $
-    zip [0..] $
-    lines
+    zip [0..] lines
     where
         lines = T.lines content
         height = length lines
@@ -41,16 +40,8 @@ lowestPoints input =
     where
         isLowestPoint :: (Int, Int) -> Int -> Bool
         isLowestPoint (y, x) elem =
-            -- FIXME: Use adjacentPoss
-            elem < above &&
-            elem < below &&
-            elem < left &&
-            elem < right
-            where
-                above = M.findWithDefault 9 (y - 1, x)     input
-                below = M.findWithDefault 9 (y + 1, x)     input
-                left  = M.findWithDefault 9 (y,     x - 1) input
-                right = M.findWithDefault 9 (y,     x + 1) input
+            all ((elem <) . (\pos -> M.findWithDefault 9 pos input)) $
+            adjacentPoss (y, x)
 
 destBasin :: M.Map (Int, Int) Int -> M.Map (Int, Int) (Int, Int) -> (Int, Int) -> MB.Maybe (Int, Int)
 destBasin input basins (y, x)
