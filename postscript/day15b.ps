@@ -1,0 +1,384 @@
+%!PS-Adobe-3.0
+
+%% This algorithm is *way* too slow to generate a result in a useful time:-(
+
+/read_parse_input {
+    2 dict begin
+    /Fd (../input/day15.txt) (r) file def
+    /Buffer 256 string def
+    [
+        {
+            Fd Buffer readline
+            not { pop exit } if
+            [ exch { 48 sub } forall ]
+        } loop
+    ]
+    Fd closefile
+    end
+} def
+
+/vec_create {
+    [
+        0       %% used size
+        2 array %% array storage
+    ]
+} def
+
+/vec_get {
+    %% vec index
+    exch
+    %% index vec
+    aload
+    %% index vec.size vec.array
+    exch 2 index
+    %% index vec.array vec.size index
+    le { /rangecheck signalerror } if
+    %% index vec.array
+    exch get
+    %% vec.array[index]
+} def
+
+/_vec_inc_size {
+    %% vec
+    dup 0 get
+    %% vec vec.size
+    1 add
+    %% vec vec.new_size
+    0 exch put
+    %%
+} def
+
+/_vec_ensure_phys_size {
+    %% vec
+    aload
+    %% vec.size vec.array vec
+    3 1 roll
+    %% vec vec.size vec.array
+    dup length
+    %% vec vec.size vec.array vec.array.length
+    3 -1 roll
+    %% vec vec.array vec.array.length vec.size
+    lt {
+        %% vec vec.array
+        dup length 2 mul array
+        %% vec vec.array new_array
+        dup 0 3 index
+        %% vec vec.array new_array new_array 0 vec.array
+        putinterval
+        %% vec vec.array new_array
+        exch pop
+        %% vec new_array
+        1 exch
+        %% vec 1 new_array
+        put
+        %%
+    } {
+        %% vec vec.array
+        pop pop
+        %%
+    } ifelse
+    %%
+} def
+
+/vec_push_back {
+    %% vec item
+    exch
+    %% item vec
+    dup _vec_inc_size
+    dup _vec_ensure_phys_size
+    %% item vec
+    aload pop
+    %% item vec.size vec.array
+    exch 1 sub
+    %% item vec.array index
+    3 -1 roll put
+    %%
+} def
+
+/coord_create {
+    %% x y
+    [ 3 1 roll ]
+    %% coord
+} def
+
+/coord_copy_and_move {
+    %% path offset
+    aload pop
+    %% path offset.x offset.y
+    3 -1 roll
+    %% offset.x offset.y path
+    aload pop
+    %% offset.x offset.y path.x path.y
+    3 -1 roll
+    %% offset.x path.x path.y offset.y
+    add
+    %% offset.x path.x new_y
+    3 1 roll
+    %% new_y offset.x path.x
+    add
+    %% new_y new_x
+    exch coord_create
+    %% new_coord
+} def
+
+/path_create {
+    %% coord cost
+    [ 3 1 roll null ]
+    %% path
+} def
+
+/path_get_coord {
+    %% path
+    0 get
+    %% path.coord
+} def
+
+/path_get_cost {
+    %% path
+    1 get
+    %% path.cost
+} def
+
+/path_get_next {
+    %% path
+    2 get
+    %% path.next
+} def
+
+/path_set_next {
+    %% path new_next
+    2 exch put
+    %%
+} def
+
+/InputTile read_parse_input def
+/InputSizeTile InputTile length def
+/TileNum 5 def
+/InputSize InputSizeTile TileNum mul def
+/MinCoord 0 def
+/MaxCoord InputSize 1 sub def
+
+/Input [
+    0 1 MaxCoord { pop InputSize array } for
+] def
+
+0 1 MaxCoord {
+    %% rowIndex
+    0 1 MaxCoord {
+        %% rowIndex colIndex
+        1 index InputSizeTile mod
+        %% rowIndex colIndex tileRowIndex
+        InputTile exch get
+        %% rowIndex colIndex tileRow
+        1 index InputSizeTile mod
+        %% rowIndex colIndex tileRow tileColIndx
+        get
+        %% rowIndex colIndex cost
+        2 index InputSizeTile idiv
+        %% rowIndex colIndex cost tileY
+        2 index InputSizeTile idiv
+        %% rowIndex colIndex cost tileY tileX
+        add
+        %% rowIndex colIndex cost cost_delta
+        add 10 mod
+        %% rowIndex colIndex new_cost
+        2 index Input exch get
+        %% rowIndex colIndex new_cost inputRow
+        3 1 roll
+        %% rowIndex inputRow colIndex new_cost
+        put
+        %% rowIndex
+    } for
+    %% rowIndex
+    pop
+    %%
+} for
+
+/CheapestPathCost [
+    0 1 MaxCoord {
+        pop [ 0 1 MaxCoord { pop 4294967295 } for ]
+    } for
+] def
+CheapestPathCost 0 get 0 0 put
+
+/ActivePaths 0 0 coord_create 0 path_create def
+
+/activepaths_pop_head {
+    ActivePaths
+    dup path_get_next
+    /ActivePaths exch store
+} def
+
+/activepaths_insert {
+    %% FIXME: Insert this sorted, with least cost first?
+
+    %% path
+    {
+        %% path
+        ActivePaths null eq {
+            /ActivePaths exch store
+            exit
+        } if
+
+        %% path
+        ActivePaths
+        %% path list_path
+        {
+            %% path list_path
+            dup path_get_next
+            %% path list_path list_path_next
+            dup null eq { pop exit } if
+            %% path list_path list_path_next
+            exch pop
+            %% path list_path_next
+        } loop
+        %% path list_path
+        exch path_set_next
+        %%
+        exit
+    } loop
+    %%
+} def
+
+/Moves [
+     1  0 coord_create
+    -1  0 coord_create
+     0  1 coord_create
+     0 -1 coord_create
+] def
+
+/next_coords {
+    %% coord
+    [ exch
+        Moves {
+            %% coord delta
+            1 index
+            %% coord delta coord
+            coord_copy_and_move exch
+            %% new_coord coord
+        } forall
+        %% new_coord... coord
+        pop
+        %% new_coord...
+    ]
+} def
+
+/coord_is_valid {
+    {
+        dup 0 get MinCoord lt { false exit } if
+        dup 0 get MaxCoord gt { false exit } if
+        dup 1 get MinCoord lt { false exit } if
+        dup 1 get MaxCoord gt { false exit } if
+        true exit
+    } loop
+    exch pop
+} def
+
+/coord_cost {
+    %% coord
+    aload pop
+    %% coord.x coord.y
+    Input exch get
+    %% coord.x input_row
+    exch get
+    %% cost
+} def
+
+/costs_is_lower {
+    %% coord cost
+    exch
+    %% cost coord
+    aload pop
+    %% cost coord.x coord.y
+    CheapestPathCost exch get
+    %% cost coord.x least_cost_row
+    exch get
+    %% cost least_cost
+    lt
+    %% is_lower
+} def
+
+/costs_is_lowest {
+    %% coord cost
+    exch
+    %% cost coord
+    aload pop
+    %% cost coord.x coord.y
+    CheapestPathCost exch get
+    %% cost coord.x least_cost_row
+    exch get
+    %% cost least_cost
+    le
+    %% is_lowest
+} def
+
+/costs_record {
+    %% coord cost
+    exch
+    %% cost coord
+    aload pop
+    %% cost coord.x coord.y
+    CheapestPathCost exch get
+    %% cost coord.x least_cost_row
+    3 1 roll exch
+    %% least_cost_row coord.x cost 
+    put
+    %%
+} def
+
+/coord_is_target {
+    %% coord
+    aload pop
+    %% coord.x coord.y
+    {
+        %% coord.x coord.y
+        MaxCoord ne { pop false exit } if
+        %% coord.x
+        MaxCoord ne { false exit } if
+        %%
+        true exit
+    } loop
+    %% is_target
+} def
+
+{
+    ActivePaths null eq { exit } if
+    activepaths_pop_head
+    %% path
+    dup path_get_cost
+    %% path cost
+    exch path_get_coord
+    %% cost coord
+    {
+        %% cost coord
+        dup 2 index costs_is_lowest not { pop exit } if
+        %% cost coord
+        next_coords {
+            {
+                %% cost new_coord
+                dup coord_is_valid not { pop exit } if
+                dup coord_cost
+                %% cost new_coord cost_delta
+                2 index add
+                %% cost new_coord new_cost
+                1 index 1 index costs_is_lower not { pop pop exit } if
+                %% cost new_coord new_cost
+                1 index 1 index costs_record
+                %% cost new_coord new_cost
+                1 index coord_is_target { pop pop exit } if
+                %% cost new_coord new_cost
+                path_create
+                %% cost new_path
+                activepaths_insert
+                %% cost
+                exit
+            } loop
+        } forall
+        %% cost
+        exit
+    } loop
+    %% cost
+    pop
+    %%
+} loop
+CheapestPathCost MaxCoord get MaxCoord get =
