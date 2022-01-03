@@ -1,7 +1,5 @@
 %!PS-Adobe-3.0
 
-%% This algorithm is *way* too slow to generate a result in a useful time:-(
-
 /read_parse_input {
     2 dict begin
     /Fd (../input/day15.txt) (r) file def
@@ -121,34 +119,234 @@
     %% new_coord
 } def
 
-/path_create {
-    %% coord cost
-    [ 3 1 roll null ]
-    %% path
+/coord_state_create {
+    %% coord path_cost
+    [ 3 1 roll false null null ]
+    %% coord_state
 } def
 
-/path_get_coord {
-    %% path
+/coord_state_get_coord {
+    %% coord_state
     0 get
-    %% path.coord
+    %% coord_state.coord
 } def
 
-/path_get_cost {
-    %% path
+/coord_state_get_path_cost {
+    %% coord_state
     1 get
-    %% path.cost
+    %% coord_state.path_cost
 } def
 
-/path_get_next {
-    %% path
+/coord_state_set_path_cost {
+    %% coord_state new_path_cost
+    1 exch put
+    %%
+} def
+
+/coord_state_get_visited {
+    %% coord_state
     2 get
-    %% path.next
+    %% coord_state.visited
 } def
 
-/path_set_next {
-    %% path new_next
+/coord_state_set_visited {
+    %% coord_state new_visited
     2 exch put
     %%
+} def
+
+/coord_state_get_next {
+    %% coord_state
+    3 get
+    %% coord_state.next
+} def
+
+/coord_state_set_next {
+    %% coord_state new_next
+    3 exch put
+    %%
+} def
+
+/coord_state_get_prev {
+    %% coord_state
+    4 get
+    %% coord_state.prev
+} def
+
+/coord_state_set_prev {
+    %% coord_state new_prev
+    4 exch put
+    %%
+} def
+
+/coord_states_get {
+    %% coord
+    aload pop
+    %% coord.x coord.y
+    CoordStates exch get
+    %% coord.x coord_states_row
+    exch get
+    %% coord_state
+} def
+
+/_coords_unvisited_insert_empty {
+    %% coord_state
+    dup null coord_state_set_next
+    %% coord_state
+    dup null coord_state_set_prev
+    %% coord_state
+    /CoordsUnvisited exch store
+    %%
+} def
+
+/_coords_unvisited_insert_non_empty {
+    %% coord_state prev next
+    2 index coord_state_get_path_cost
+    %% coord_state prev next coord_state.path_cost
+    3 1 roll
+    %% coord_state coord_state.path_cost prev next
+    {
+        %% coord_state coord_state.path_cost prev next
+        dup null eq {
+            exit
+        } if
+        %% coord_state coord_state.path_cost prev next
+        dup coord_state_get_path_cost
+        %% coord_state coord_state.path_cost prev next next.path_cost
+        3 index ge {
+            %% coord_state coord_state.path_cost prev next
+            exit
+        } if
+        %% coord_state coord_state.path_cost prev next
+        exch pop
+        %% coord_state coord_state.path_cost orig_next/next_prev
+        dup coord_state_get_next
+        %% coord_state coord_state.path_cost orig_next/next_prev next_next
+    } loop
+    %% coord_state coord_state.path_cost prev next
+    3 -1 roll pop
+    %% coord_state prev next
+    3 -1 roll
+    %% prev next coord_state
+    dup 3 index coord_state_set_prev
+    %% prev next coord_state
+    dup 2 index coord_state_set_next
+    %% prev next coord_state
+    dup
+    %% prev next coord_state coord_state
+    3 1 roll
+    %% prev coord_state next coord_state
+    1 index null ne {
+        %% prev coord_state next coord_state
+        coord_state_set_prev
+        %% prev coord_state
+    } {
+        %% prev coord_state next coord_state
+        pop pop
+        %% prev coord_state
+    } ifelse
+    %% prev coord_state
+    1 index null ne {
+        %% prev coord_state
+        coord_state_set_next
+        %%
+    } {
+        %% prev coord_state
+        pop pop
+        %%
+    } ifelse
+    %%
+} def
+
+/coords_unvisited_insert {
+    %% coord_state
+    {
+        %% coord_state
+        CoordsUnvisited null eq {
+            %% coord_state
+            _coords_unvisited_insert_empty
+            %%
+            exit
+        } if
+        %% coord_state
+        dup null CoordsUnvisited _coords_unvisited_insert_non_empty
+        %% coord_state
+        dup coord_state_get_prev null eq {
+            dup /CoordsUnvisited exch store
+        } if
+        %% coord_state
+        pop
+        %%
+        exit
+    } loop
+    %%
+} def
+
+/dump_unvisited {
+    CoordsUnvisited
+    0 1 4 {
+        pop
+        dup coord_state_get_coord ==
+        dup coord_state_get_path_cost ==
+        coord_state_get_next
+    } for
+    pop
+} def
+
+/coords_unvisited_is_empty {
+    CoordsUnvisited null eq
+} def
+
+/coords_unvisited_remove {
+    %% coord_state
+    dup coord_state_get_next
+    %% coord_state next
+    1 index coord_state_get_prev
+    %% coord_state next prev
+    2 index null coord_state_set_next
+    %% coord_state next prev
+    2 index null coord_state_set_prev
+    %% coord_state next prev
+    1 index null ne {
+        1 index 1 index coord_state_set_prev
+    } if
+    %% coord_state next prev
+    dup null ne {
+        dup 2 index coord_state_set_next
+    } if
+    %% coord_state next prev
+    pop
+    %% coord_state next
+    1 index CoordsUnvisited eq {
+        %% coord_state next
+        /CoordsUnvisited exch store
+        %% coord_state
+    } {
+        %% coord_state next
+        pop
+        %% coord_state
+    } ifelse
+    %% coord_state
+    pop
+    %%
+} def
+
+/coords_unvisited_pop_head {
+    %%
+    CoordsUnvisited
+    %% head
+    dup coords_unvisited_remove
+    %% head
+} def
+
+/input_get_cost {
+    %% coord
+    aload pop
+    %% coord.x coord.y
+    Input exch get
+    %% coord.x input_row
+    exch get
+    %% input/cost
 } def
 
 /InputTile read_parse_input def
@@ -180,7 +378,7 @@
         %% rowIndex colIndex cost tileY tileX
         add
         %% rowIndex colIndex cost cost_delta
-        add 10 mod
+        add 1 sub 9 mod 1 add
         %% rowIndex colIndex new_cost
         2 index Input exch get
         %% rowIndex colIndex new_cost inputRow
@@ -194,51 +392,48 @@
     %%
 } for
 
-/CheapestPathCost [
+/CoordStates [
     0 1 MaxCoord {
-        pop [ 0 1 MaxCoord { pop 4294967295 } for ]
+        %% row_id
+        [ exch
+            %% row_id
+            0 1 MaxCoord {
+                %% row_id col_id
+                1 index
+                %% row_id col_id row_id
+                coord_create 4294967295 coord_state_create
+                %% row_id path
+                exch
+                %% path row_id
+            } for
+            %% path row_id
+            pop
+            %% path
+        ]
+        %% row
     } for
+    %% row
 ] def
-CheapestPathCost 0 get 0 0 put
+0 0 coord_create coord_states_get 0 coord_state_set_path_cost
 
-/ActivePaths 0 0 coord_create 0 path_create def
-
-/activepaths_pop_head {
-    ActivePaths
-    dup path_get_next
-    /ActivePaths exch store
-} def
-
-/activepaths_insert {
-    %% FIXME: Insert this sorted, with least cost first?
-
-    %% path
-    {
-        %% path
-        ActivePaths null eq {
-            /ActivePaths exch store
-            exit
-        } if
-
-        %% path
-        ActivePaths
-        %% path list_path
-        {
-            %% path list_path
-            dup path_get_next
-            %% path list_path list_path_next
-            dup null eq { pop exit } if
-            %% path list_path list_path_next
-            exch pop
-            %% path list_path_next
-        } loop
-        %% path list_path
-        exch path_set_next
-        %%
-        exit
-    } loop
+/CoordsUnvisited null def
+MaxCoord -1 0 {
+    %% row_id
+    CoordStates exch get
+    %% row
+    MaxCoord -1 0 {
+        %% row col_id
+        1 index exch
+        %% row row col_id
+        get
+        %% row coord_state
+        coords_unvisited_insert
+        %% row
+    } for
+    %% row
+    pop
     %%
-} def
+} for
 
 /Moves [
      1  0 coord_create
@@ -264,69 +459,52 @@ CheapestPathCost 0 get 0 0 put
 } def
 
 /coord_is_valid {
+    %% coord
     {
+        %% coord
         dup 0 get MinCoord lt { false exit } if
+        %% coord
         dup 0 get MaxCoord gt { false exit } if
+        %% coord
         dup 1 get MinCoord lt { false exit } if
+        %% coord
         dup 1 get MaxCoord gt { false exit } if
+        %% coord
         true exit
     } loop
+    %% coord is_valid
     exch pop
 } def
 
-/coord_cost {
+/next_coords_states_valid {
     %% coord
-    aload pop
-    %% coord.x coord.y
-    Input exch get
-    %% coord.x input_row
-    exch get
-    %% cost
+    [ exch
+        %% coord
+        next_coords {
+            %% next_coord
+            {
+                %% next_coord
+                dup coord_is_valid not {
+                    pop exit
+                } if
+                %% next_coord
+                coord_states_get
+                %% next_coord_state
+                dup coord_state_get_visited {
+                    pop exit
+                } if
+                %% next_coord_state
+                exit
+            } loop
+            %% next_coord_state
+            %% or empty
+        } forall
+    ]
 } def
 
-/costs_is_lower {
-    %% coord cost
-    exch
-    %% cost coord
-    aload pop
-    %% cost coord.x coord.y
-    CheapestPathCost exch get
-    %% cost coord.x least_cost_row
-    exch get
-    %% cost least_cost
-    lt
-    %% is_lower
-} def
-
-/costs_is_lowest {
-    %% coord cost
-    exch
-    %% cost coord
-    aload pop
-    %% cost coord.x coord.y
-    CheapestPathCost exch get
-    %% cost coord.x least_cost_row
-    exch get
-    %% cost least_cost
-    le
-    %% is_lowest
-} def
-
-/costs_record {
-    %% coord cost
-    exch
-    %% cost coord
-    aload pop
-    %% cost coord.x coord.y
-    CheapestPathCost exch get
-    %% cost coord.x least_cost_row
-    3 1 roll exch
-    %% least_cost_row coord.x cost 
-    put
-    %%
-} def
-
-/coord_is_target {
+/coord_state_is_target {
+    %% coord_state
+    coord_state_get_coord
     %% coord
     aload pop
     %% coord.x coord.y
@@ -342,43 +520,53 @@ CheapestPathCost 0 get 0 0 put
 } def
 
 {
-    ActivePaths null eq { exit } if
-    activepaths_pop_head
-    %% path
-    dup path_get_cost
-    %% path cost
-    exch path_get_coord
-    %% cost coord
-    {
-        %% cost coord
-        dup 2 index costs_is_lowest not { pop exit } if
-        %% cost coord
-        next_coords {
-            {
-                %% cost new_coord
-                dup coord_is_valid not { pop exit } if
-                dup coord_cost
-                %% cost new_coord cost_delta
-                2 index add
-                %% cost new_coord new_cost
-                1 index 1 index costs_is_lower not { pop pop exit } if
-                %% cost new_coord new_cost
-                1 index 1 index costs_record
-                %% cost new_coord new_cost
-                1 index coord_is_target { pop pop exit } if
-                %% cost new_coord new_cost
-                path_create
-                %% cost new_path
-                activepaths_insert
-                %% cost
-                exit
-            } loop
-        } forall
-        %% cost
-        exit
-    } loop
-    %% cost
+    %%
+    coords_unvisited_is_empty { exit } if
+    %%
+    coords_unvisited_pop_head
+    %% src_coord_state
+    dup null eq { pop exit } if
+    %% src_coord_state
+    dup true coord_state_set_visited
+    %% src_coord_state
+    dup coord_state_is_target { pop exit } if
+    %% src_coord_state
+    dup coord_state_get_path_cost
+    %% src_coord_state src_path_cost
+    exch
+    %% src_path_cost src_coord_state
+    coord_state_get_coord
+    %% src_path_cost src_coord
+    next_coords_states_valid {
+        %% src_path_cost dst_coord_state
+        %% src_path_cost dst_coord_state
+        dup coord_state_get_coord
+        %% src_path_cost dst_coord_state dst_coord
+        input_get_cost
+        %% src_path_cost dst_coord_state dst_cost
+        2 index add dup
+        %% src_path_cost dst_coord_state new_dst_path_cost new_dst_path_cost
+        2 index coord_state_get_path_cost
+        %% src_path_cost dst_coord_state new_dst_path_cost new_dst_path_cost old_dst_path_cost
+        lt {
+            %% src_path_cost dst_coord_state new_dst_path_cost
+            1 index 3 1 roll
+            %% src_path_cost dst_coord_state dst_coord_state new_dst_path_cost
+            coord_state_set_path_cost
+            %% src_path_cost dst_coord_state
+            dup coords_unvisited_remove
+            %% src_path_cost dst_coord_state
+            coords_unvisited_insert
+            %% src_path_cost dst_coord_state
+        } {
+            %% src_path_cost dst_coord_state new_dst_path_cost
+            pop pop
+            %% src_path_cost
+        } ifelse
+        %% src_path_cost
+    } forall
+    %% src_path_cost
     pop
     %%
 } loop
-CheapestPathCost MaxCoord get MaxCoord get =
+MaxCoord MaxCoord coord_create coord_states_get coord_state_get_path_cost =
