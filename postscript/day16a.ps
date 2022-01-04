@@ -1,0 +1,211 @@
+%!PS-Adobe-3.0
+
+/read_input {
+    2 dict begin
+    /Fd (../input/day16.txt) (r) file def
+    /Buffer 2048 string def
+    Fd Buffer readhexstring
+    pop
+    Fd closefile
+    end
+} def
+
+/byte_to_bin {
+    256 add
+    2 10 string cvrs
+    1 8 getinterval
+} def
+
+/str_bin_to_str_bits {
+    %% str
+    dup length 8 mul string
+    %% str buf
+    0
+    %% str buf index
+    3 -1 roll
+    %% buf index str
+    {
+        %% buf index byte
+        byte_to_bin
+        %% buf index byte_str
+        2 index 2 index 3 -1 roll
+        %% buf index buf index byte_str
+        putinterval
+        %% buf index
+        8 add
+        %% buf next_index
+    } forall
+    %% buf index
+    pop
+    %% buf
+} def
+
+/Input read_input def
+/InputBits Input str_bin_to_str_bits def
+/InputBitsLen InputBits length def
+/InputBitsIdx 0 def
+
+/get_bits {
+    %% bit_count
+    dup
+    %% bit_count bit_count
+    InputBits InputBitsIdx 3 -1 roll
+    %% bit_count InputBits InputBitsIdx bit_count
+    getinterval
+    %% bit_count bit_str
+    exch
+    %% bit_str bit_count
+    InputBitsIdx add
+    %% bit_str new_InputBitsIdx
+    /InputBitsIdx exch store
+    %% bit_str
+} def
+
+/bits_left {
+    InputBitsLen InputBitsIdx sub
+} def
+
+/bit_str_to_int {
+    0 exch {
+        exch 2 mul exch
+        49 eq {
+            1 add
+        } if
+    } forall
+} def
+
+/parse_literal {
+    %%
+    2048 string 0
+    %% literal literal_index
+    {
+        %% literal literal_index
+        5 get_bits
+        %% literal literal_index group_bits
+        dup
+        %% literal literal_index group_bits group_bits
+        0 1 getinterval
+        %% literal literal_index group_bits is_another_group_bits
+        exch
+        1 4 getinterval
+        %% literal literal_index is_another_group_bits group_val_bits 
+        3 index 3 index 3 -1 roll
+        %% literal literal_index is_another_group_bits literal literal_index group_val_bits
+        putinterval
+        %% literal literal_index is_another_group_bits
+        exch 4 add exch
+        %% literal next_literal_index is_another_group_bits
+        (0) eq {
+            %% literal next_literal_index
+            exit
+        } if
+        %% literal next_literal_index
+    } loop
+    %% literal literal_index
+    0 exch
+    %% literal 0 literal_index
+    getinterval bit_str_to_int
+    %% literal
+} def
+
+/parse_non_literal_length {
+    %% 
+    15 get_bits bit_str_to_int
+    %% length_bits
+    3 dict begin
+        %% length_bits
+        InputBits InputBitsIdx 2 index getinterval
+        %% length_bits sub_input
+        /InputBits exch def
+        %% length_bits
+        dup /InputBitsLen exch def
+        %% length_bits
+        /InputBitsIdx 0 def
+        %% length_bits
+        {
+            %% length_bits
+            bits_left 0 eq { exit } if
+            %% length_bits
+            parse_pkt
+            %% length_bits pkt
+            exch
+            %% pkt length_bits
+        } loop
+        %% length_bits
+    end
+    %% length_bits
+    /InputBitsIdx InputBitsIdx 3 -1 roll add store
+    %%
+} def
+
+/parse_non_literal_pkt_count {
+    %% 
+    11 get_bits bit_str_to_int
+    %% pkt_count
+    1 1 3 -1 roll {
+        pop
+        parse_pkt
+    } for
+} def
+
+/parse_non_literal {
+    [
+        %%
+        1 get_bits
+        %% length_type_id
+        (0) eq {
+            parse_non_literal_length
+        } {
+            parse_non_literal_pkt_count
+        } ifelse
+    ]
+} def
+
+/parse_pkt {
+    [
+        %%
+        3 get_bits bit_str_to_int
+        %% version
+        3 get_bits bit_str_to_int
+        %% version type
+        dup 4 eq {
+            %% version type
+            parse_literal
+            %% version type pkt_body
+        } {
+            %% version type
+            parse_non_literal
+            %% version type pkt_body
+        } ifelse
+        %% version type pkt_body
+    ]
+    %% pkt
+} def
+
+/sum_versions {
+    %% pkt
+    dup 0 get exch
+    %% version/sum pkt
+    dup 1 get
+    %% version/sum pkt type
+    4 ne {
+        %% version/sum pkt
+        2 get
+        %% sum sub_pkts
+        {
+            %% sum sub_pkt
+            sum_versions
+            %% sum sub_pkt_sum
+            add
+            %% sum
+        } forall
+        %% sum
+    } {
+        %% version/sum pkt
+        pop
+        %% sum
+    } ifelse
+    %% sum
+} def
+
+parse_pkt sum_versions =
