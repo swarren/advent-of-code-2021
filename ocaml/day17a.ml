@@ -28,39 +28,43 @@ let fire target velocity =
     if x == 0 then 0
     else if velocity.x < 0 then -1
     else 1
-  in let step coord velocity =
-    let coord' = {x=coord.x + velocity.x; y=coord.y + velocity.y}
-    in let velocity' = {x=velocity.x - sign velocity.x; y=velocity.y - 1}
-    in (coord', velocity')
-  in let rec steps target maxY coord velocity =
-    let (coord', velocity') = step coord velocity
-    in let isRightOfRight = coord'.x > target.xright
-    in let isAtOrRightOfLeft = coord'.x >= target.xleft
-    in let isBelowBottom = coord'.y < target.ybottom
-    in let isAtOrBelowTop = coord'.y <= target.ytop
-    in let maxY' = max maxY coord'.y 
-    in if isRightOfRight && isBelowBottom
-       then (MissRightBelow, maxY')
-       else if isRightOfRight
-            then (MissRight, maxY')
-            else if isBelowBottom
-                 then (MissBelow, maxY')
-                 else if isAtOrRightOfLeft && isAtOrBelowTop
-                      then (Hit, maxY')
-                      else steps target maxY' coord' velocity'
-  in steps target 0 {x=0; y=0} velocity
+  in
+  let step coord velocity =
+    let coord' = {x=coord.x + velocity.x; y=coord.y + velocity.y} in
+    let velocity' = {x=velocity.x - sign velocity.x; y=velocity.y - 1} in
+    (coord', velocity')
+  in
+  let rec steps target maxY coord velocity =
+    let (coord', velocity') = step coord velocity in
+    let isRightOfRight = coord'.x > target.xright in
+    let isAtOrRightOfLeft = coord'.x >= target.xleft in
+    let isBelowBottom = coord'.y < target.ybottom in
+    let isAtOrBelowTop = coord'.y <= target.ytop in
+    let maxY' = max maxY coord'.y in
+    if isRightOfRight && isBelowBottom
+    then (MissRightBelow, maxY')
+    else if isRightOfRight
+      then (MissRight, maxY')
+      else if isBelowBottom
+        then (MissBelow, maxY')
+        else if isAtOrRightOfLeft && isAtOrBelowTop
+          then (Hit, maxY')
+          else steps target maxY' coord' velocity'
+  in
+  steps target 0 {x=0; y=0} velocity
 
 let target = read_parse_input "../input/day17.txt"
 let maxMaxY = ref 0
 let () = for vx = 1 to target.xright do
   for vy = target.ybottom to 1000 do
-    let velocity = {x=vx; y=vy}
-    in let (result, maxY) = fire target velocity
-    in (* let () = *) maxMaxY := if result == Hit then max !maxMaxY maxY else !maxMaxY
+    let velocity = {x=vx; y=vy} in
+    let (result, maxY) = fire target velocity in
+    (* let () = *) maxMaxY := if result == Hit then max !maxMaxY maxY else !maxMaxY
     (*
-    in let () = print_endline (vector_printer velocity)
-    in let () = print_endline (result_printer result)
-    in print_endline (string_of_int maxY)
+    in
+    let () = print_endline (vector_printer velocity) in
+    let () = print_endline (result_printer result) in
+    print_endline (string_of_int maxY)
     *)
   done
 done
